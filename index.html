@@ -404,10 +404,10 @@ function clientes(){
 
 // ---- Técnicos ----
 function tecnicos(){
-  const ft=mkForm([["nombre","Nombre",{required:""}],["tel","Teléfono",{type:"tel"}],["esp","Especialidad",{opts:ESP}],["tarifa","Sueldo por hora (MXN)",{type:"number",min:"0",step:"0.01"}]],"Guardar técnico",(o,id)=>{o.tarifa=+o.tarifa||0;upsert(D.tecnicos,o,id);});
+  const ft=mkForm([["nombre","Nombre",{required:""}],["tel","Teléfono",{type:"tel"}],["esp","Especialidad",{opts:ESP}],["tarifa","Sueldo semanal (MXN)",{type:"number",min:"0",step:"0.01"}]],"Guardar técnico",(o,id)=>{o.tarifa=+o.tarifa||0;upsert(D.tecnicos,o,id);});
   return h("div",{},h("h1",{},"Técnicos"),h("p",{class:"sub"},"Personal del taller"),adminBar(),
     ADMIN?h("div",{class:"card"},h("h2",{},"Técnico / mecánico"),ft.form):"",
-    h("div",{class:"list"},...(D.tecnicos.length?D.tecnicos.map(t=>rowCard("👷 "+t.nombre,[t.esp,t.tel,ADMIN&&t.tarifa?money(t.tarifa)+" por hora":"",D.notas.filter(n=>n.tecnicoId===t.id).length+" trabajos"].filter(Boolean).join(" · "),...(ADMIN?[bEdit(()=>ft.fill(t)),bDel("¿Eliminar a "+t.nombre+" y sus horas?",()=>{D.tecnicos=D.tecnicos.filter(x=>x.id!==t.id);D.horas=D.horas.filter(r=>r.tecnicoId!==t.id);})]:[]))):[empty("Aún no hay técnicos")])));
+    h("div",{class:"list"},...(D.tecnicos.length?D.tecnicos.map(t=>rowCard("👷 "+t.nombre,[t.esp,t.tel,ADMIN&&t.tarifa?money(t.tarifa)+" por semana":"",D.notas.filter(n=>n.tecnicoId===t.id).length+" trabajos"].filter(Boolean).join(" · "),...(ADMIN?[bEdit(()=>ft.fill(t)),bDel("¿Eliminar a "+t.nombre+" y sus horas?",()=>{D.tecnicos=D.tecnicos.filter(x=>x.id!==t.id);D.horas=D.horas.filter(r=>r.tecnicoId!==t.id);})]:[]))):[empty("Aún no hay técnicos")])));
 }
 
 // ---- Catálogo de servicios ----
@@ -506,10 +506,10 @@ function horas(){
   const chips=h("div",{class:"chips",style:"margin:0"},...[["hoy","Hoy"],["semana","Esta semana"],["mes","Este mes"],["todo","Todo"]].map(([k,l])=>h("button",{class:hPer===k?"on":"",onclick:()=>{hPer=k;refresh();}},l)));
   const fs=h("select",{onchange:e=>{hTec=e.target.value;refresh();},style:"width:auto"},h("option",{value:""},"Todos los trabajadores"),...D.tecnicos.map(t=>h("option",{value:t.id,...(hTec===t.id?{selected:""}:{})},t.nombre)));
   const filas=rs.map(r=>{const t=tec(r.tecnicoId),hh=hrsDe(r),c=[t.nombre,fecha(r.entrada),hora(r.entrada),r.salida?hora(r.salida):h("b",{style:"color:var(--warn)"},"En curso"),r.salida?hm(hh):"—"];
-    if(ADMIN)c.push(r.salida?money(hh*(+t.tarifa||0)):"—",h("div",{class:"act"},bEdit(()=>ft.fill(r)),bDel("¿Eliminar este registro?",()=>D.horas=D.horas.filter(x=>x.id!==r.id))));
+    if(ADMIN)c.push(h("div",{class:"act"},bEdit(()=>ft.fill(r)),bDel("¿Eliminar este registro?",()=>D.horas=D.horas.filter(x=>x.id!==r.id))));
     return c;});
-  const res=D.tecnicos.filter(t=>!hTec||t.id===hTec).map(t=>{const hh=rs.filter(r=>r.tecnicoId===t.id).reduce((s,r)=>s+hrsDe(r),0);return[t,hh,hh*(+t.tarifa||0)];});
-  const tabRes=table(ADMIN?["Trabajador","Horas","Sueldo por hora","Sueldo a pagar"]:["Trabajador","Horas"],[...res.map(([t,hh,p])=>ADMIN?[t.nombre,hm(hh),money(t.tarifa),money(p)]:[t.nombre,hm(hh)]),...(ADMIN?[[h("b",{},"TOTAL"),hm(res.reduce((s,x)=>s+x[1],0)),"",h("b",{},money(res.reduce((s,x)=>s+x[2],0)))]]:[])]);
+  const res=D.tecnicos.filter(t=>!hTec||t.id===hTec).map(t=>{const hh=rs.filter(r=>r.tecnicoId===t.id).reduce((s,r)=>s+hrsDe(r),0);return[t,hh,+t.tarifa||0];});
+  const tabRes=table(ADMIN?["Trabajador","Horas","Sueldo semanal"]:["Trabajador","Horas"],[...res.map(([t,hh,p])=>ADMIN?[t.nombre,hm(hh),money(p)]:[t.nombre,hm(hh)]),...(ADMIN?[[h("b",{},"TOTAL"),hm(res.reduce((s,x)=>s+x[1],0)),h("b",{},money(res.reduce((s,x)=>s+x[2],0)))]]:[])]);
   return h("div",{},h("h1",{},"Horas y sueldos"),h("p",{class:"sub"},"Entradas, salidas y pago de los trabajadores"),adminBar(),
     D.tecnicos.length?h("div",{class:"card noprint"},h("h2",{},"Registrar entrada / salida"),h("div",{class:"row"},field("Trabajador",ws),h("button",{style:"align-self:end",onclick:()=>marcar("in")},"Entrada"),h("button",{class:"sec",style:"align-self:end",onclick:()=>marcar("out")},"Salida")),
       dentro.length?h("p",{style:"color:var(--mut);margin:.8rem 0 0"},"Dentro ahora: "+dentro.map(r=>tec(r.tecnicoId).nombre+" ("+hora(r.entrada)+")").join(", ")):""):
@@ -517,7 +517,7 @@ function horas(){
     ADMIN&&D.tecnicos.length?sect("Agregar o corregir un registro",ft.form):"",
     h("div",{class:"row noprint",style:"margin-top:1rem;align-items:center"},chips,fs,h("button",{class:"sec",onclick:()=>print()},"Imprimir")),
     sect("Resumen del periodo",tabRes,h("p",{style:"color:var(--mut);font-size:.8rem"},"Solo cuentan los turnos con salida registrada.")),
-    sect("Registros",filas.length?table(ADMIN?["Trabajador","Fecha","Entrada","Salida","Horas","Sueldo",""]:["Trabajador","Fecha","Entrada","Salida","Horas"],filas):empty("Sin registros en este periodo")));
+    sect("Registros",filas.length?table(ADMIN?["Trabajador","Fecha","Entrada","Salida","Horas",""]:["Trabajador","Fecha","Entrada","Salida","Horas"],filas):empty("Sin registros en este periodo")));
 }
 
 // ---- Red y service worker ----
