@@ -40,6 +40,10 @@ button,.btn{padding:.65rem 1.1rem;border:0;border-radius:8px;font-weight:600;fon
 button:hover,.btn:hover{background:var(--btn-h)}
 button.sec,.btn.sec,button.del{background:transparent;color:var(--btn);box-shadow:inset 0 0 0 1.5px var(--btn)}
 button.sec:hover,.btn.sec:hover,button.del:hover{background:#e0b04a22}
+.reloj{text-align:right}.reloj b{display:block;font-size:1.8rem;line-height:1.1}.reloj span{color:var(--mut);font-size:.85rem;text-transform:capitalize}
+button.big{width:100%;padding:1rem;font-size:1.05rem;margin-top:.8rem}
+.estado-ck{margin:.8rem 0 0;color:var(--mut)}.estado-ck b{color:var(--txt)}
+.job{padding:.8rem 1rem;border:1px solid var(--bd);border-radius:12px;background:#ffffff08}.job .m{margin-top:.2rem}
 .list{display:grid;gap:.7rem;margin-top:1rem}
 .item{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.6rem}
 .item .t{font-weight:700}.item .m{color:var(--mut);font-size:.88rem}.item .m a{color:var(--acc)}
@@ -493,15 +497,85 @@ const hm=x=>{const m=Math.round(x*60);return Math.floor(m/60)+" h "+pad2(m%60)+"
 const hora=d=>new Date(d).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
 let hPer="semana",hTec="";
 function desde(per){const d=new Date();d.setHours(0,0,0,0);if(per==="todo")return new Date(0);if(per==="semana")d.setDate(d.getDate()-((d.getDay()+6)%7));if(per==="mes")d.setDate(1);return d;}
+let hSel="";
+function panelChecador()
+{
+  if(!D.tecnicos.length)
+  {
+    return h("div",{class:"card empty"},"Aún no hay trabajadores. "+(ADMIN?"Agrégalos en ":"El administrador debe agregarlos en "),h("a",{href:"#tecnicos",style:"color:var(--acc)"},"Técnicos"),".");
+  }
+  const ws=sel(D.tecnicos,t=>[t.id,t.nombre]);
+  ws.prepend(h("option",{value:""},"Elige tu nombre"));
+  ws.value=D.tecnicos.some(t=>t.id===hSel)?hSel:"";
+  ws.onchange=()=>
+  {
+    hSel=ws.value;
+    refresh();
+  };
+  const reloj=h("div",{class:"reloj"});
+  const pintarReloj=()=>
+  {
+    const d=new Date();
+    reloj.replaceChildren(h("b",{},hora(d)),h("span",{},d.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"})));
+  };
+  pintarReloj();
+  const iv=setInterval(()=>
+  {
+    if(!reloj.isConnected)
+    {
+      clearInterval(iv);
+      return;
+    }
+    pintarReloj();
+  },15000);
+  const caja=h("div",{},h("div",{class:"row",style:"align-items:end;justify-content:space-between"},field("Trabajador",ws),reloj));
+  const id=ws.value;
+  const hoy=desde("hoy");
+  if(id)
+  {
+    const abierto=D.horas.find(r=>r.tecnicoId===id&&!r.salida);
+    const minHoy=D.horas.filter(r=>r.tecnicoId===id&&new Date(r.entrada)>=hoy).reduce((s,r)=>s+(r.salida?hrsDe(r):Math.max(0,(Date.now()-new Date(r.entrada))/36e5)),0);
+    const desdeTxt=abierto?(new Date(abierto.entrada)>=hoy?"":fecha(abierto.entrada)+" ")+hora(abierto.entrada):"";
+    caja.append(
+      h("p",{class:"estado-ck"},abierto?h("span",{},"Dentro desde las ",h("b",{},desdeTxt)):h("b",{},"Fuera del taller"),"  ·  Hoy: "+hm(minHoy)),
+      h("button",{class:"big"+(abierto?" sec":""),onclick:()=>
+      {
+        if(abierto)
+        {
+          if(!confirm("¿Registrar tu salida ahora?"))return;
+          abierto.salida=nowLocal();
+        }
+        else
+        {
+          D.horas.push({id:uid(),tecnicoId:id,entrada:nowLocal(),salida:"",nota:""});
+        }
+        save();
+        refresh();
+      }},abierto?"Registrar salida":"Registrar entrada"));
+    const mias=D.notas.filter(n=>n.tecnicoId===id&&(n.estado!=="Terminado"||new Date(n.fecha)>=hoy)).sort((a,b)=>ESTADOS.indexOf(a.estado)-ESTADOS.indexOf(b.estado));
+    const trabajo=n=>
+    {
+      const v=veh(n.vehiculoId);
+      return h("div",{class:"job"},
+        h("div",{class:"item"},h("div",{class:"t"},vtxt(v)),h("span",{class:"pill",style:"color:"+COLOR[n.estado]+";box-shadow:inset 0 0 0 1px currentColor"},n.estado)),
+        h("div",{class:"m"},cli(v.clienteId).nombre+" · "+folio(n)),
+        n.falla?h("div",{class:"m"},"Falla: "+n.falla):"",
+        h("div",{class:"m"},"Trabajo: "+(n.items||[]).map(i=>i.desc).join(", ")));
+    };
+    caja.append(h("h2",{style:"margin:1.4rem 0 .6rem"},"Trabajos asignados ("+mias.length+")"),
+      mias.length?h("div",{class:"list",style:"margin-top:0"},...mias.map(trabajo)):empty("No tienes trabajos asignados por ahora"));
+  }
+  else
+  {
+    caja.append(empty("Elige tu nombre para registrar tu entrada o salida y ver tus trabajos del día"));
+  }
+  const dentro=D.horas.filter(r=>!r.salida);
+  return h("div",{class:"card noprint"},h("h2",{},"Checador"),caja,
+    dentro.length?h("p",{style:"color:var(--mut);margin:1rem 0 0;font-size:.85rem"},"Dentro ahora: "+dentro.map(r=>tec(r.tecnicoId).nombre+" ("+hora(r.entrada)+")").join(", ")):"");
+}
 function horas(){
   const ft=mkForm([["tecnicoId","Trabajador",{opts:D.tecnicos,f:t=>[t.id,t.nombre]}],["entrada","Entrada",{type:"datetime-local",required:""}],["salida","Salida (vacío si sigue dentro)",{type:"datetime-local"}],["nota","Nota"]],"Agregar registro",(o,id)=>{if(o.salida&&o.salida<=o.entrada)return alert("La salida debe ser después de la entrada");upsert(D.horas,o,id);});
-  const ws=sel(D.tecnicos,t=>[t.id,t.nombre]);
-  const abierto=id=>D.horas.find(r=>r.tecnicoId===id&&!r.salida);
-  const marcar=tipo=>{if(!ws.value)return;const a=abierto(ws.value);
-    if(tipo==="in"){if(a)return alert("Ya tiene una entrada abierta desde las "+hora(a.entrada));D.horas.push({id:uid(),tecnicoId:ws.value,entrada:nowLocal(),salida:"",nota:""});}
-    else{if(!a)return alert("No tiene una entrada abierta");a.salida=nowLocal();}
-    save();refresh();};
-  const dentro=D.horas.filter(r=>!r.salida),ini=desde(hPer);
+  const ini=desde(hPer);
   const rs=D.horas.filter(r=>new Date(r.entrada)>=ini&&(!hTec||r.tecnicoId===hTec)).sort((a,b)=>b.entrada.localeCompare(a.entrada));
   const chips=h("div",{class:"chips",style:"margin:0"},...[["hoy","Hoy"],["semana","Esta semana"],["mes","Este mes"],["todo","Todo"]].map(([k,l])=>h("button",{class:hPer===k?"on":"",onclick:()=>{hPer=k;refresh();}},l)));
   const fs=h("select",{onchange:e=>{hTec=e.target.value;refresh();},style:"width:auto"},h("option",{value:""},"Todos los trabajadores"),...D.tecnicos.map(t=>h("option",{value:t.id,...(hTec===t.id?{selected:""}:{})},t.nombre)));
@@ -511,9 +585,7 @@ function horas(){
   const res=D.tecnicos.filter(t=>!hTec||t.id===hTec).map(t=>{const hh=rs.filter(r=>r.tecnicoId===t.id).reduce((s,r)=>s+hrsDe(r),0);return[t,hh,+t.tarifa||0];});
   const tabRes=table(ADMIN?["Trabajador","Horas","Sueldo semanal"]:["Trabajador","Horas"],[...res.map(([t,hh,p])=>ADMIN?[t.nombre,hm(hh),money(p)]:[t.nombre,hm(hh)]),...(ADMIN?[[h("b",{},"TOTAL"),hm(res.reduce((s,x)=>s+x[1],0)),h("b",{},money(res.reduce((s,x)=>s+x[2],0)))]]:[])]);
   return h("div",{},h("h1",{},"Horas y sueldos"),h("p",{class:"sub"},"Entradas, salidas y pago de los trabajadores"),adminBar(),
-    D.tecnicos.length?h("div",{class:"card noprint"},h("h2",{},"Registrar entrada / salida"),h("div",{class:"row"},field("Trabajador",ws),h("button",{style:"align-self:end",onclick:()=>marcar("in")},"Entrada"),h("button",{class:"sec",style:"align-self:end",onclick:()=>marcar("out")},"Salida")),
-      dentro.length?h("p",{style:"color:var(--mut);margin:.8rem 0 0"},"Dentro ahora: "+dentro.map(r=>tec(r.tecnicoId).nombre+" ("+hora(r.entrada)+")").join(", ")):""):
-      h("div",{class:"card empty"},"Aún no hay trabajadores. "+(ADMIN?"Agrégalos en ":"El administrador debe agregarlos en "),h("a",{href:"#tecnicos",style:"color:var(--acc)"},"Técnicos"),"."),
+    panelChecador(),
     ADMIN&&D.tecnicos.length?sect("Agregar o corregir un registro",ft.form):"",
     h("div",{class:"row noprint",style:"margin-top:1rem;align-items:center"},chips,fs,h("button",{class:"sec",onclick:()=>print()},"Imprimir")),
     sect("Resumen del periodo",tabRes,h("p",{style:"color:var(--mut);font-size:.8rem"},"Solo cuentan los turnos con salida registrada.")),

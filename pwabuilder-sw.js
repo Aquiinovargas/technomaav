@@ -1,5 +1,5 @@
 // Service worker de consultecweb: la app abre también sin internet
-const CACHE = "technomaav-v10";
+const CACHE = "technomaav-v11";
 const offlineFallbackPage = "./offline.html";
 const JSPDF = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 const PRECACHE = ["./", "./index.html", offlineFallbackPage, "./manifest.json",
