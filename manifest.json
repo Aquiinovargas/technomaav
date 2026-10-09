@@ -1,0 +1,61 @@
+{
+  "id": "./",
+  "name": "Transmisiones Automáticas González",
+  "short_name": "Transmisiones González",
+  "description": "Sistema de taller: clientes, vehículos, notas de remisión y reportes",
+  "lang": "es",
+  "dir": "ltr",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "./",
+  "start_url": "./",
+  "background_color": "#ffffff",
+  "theme_color": "#0a1f44",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Clientes",
+      "url": "./#clientes",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Notas",
+      "url": "./#notas",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "categories": [
+    "business",
+    "productivity"
+  ]
+}
